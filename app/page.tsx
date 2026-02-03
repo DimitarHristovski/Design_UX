@@ -1,27 +1,33 @@
 import Header from '@/components/Header'
 import HeroSlider from '@/components/HeroSlider'
 
-const slides = [
+// Generate slides array with all 40 frames
+const frameSlides = Array.from({ length: 40 }, (_, i) => {
+  const frameNumber = String(i + 1).padStart(3, '0')
+  return {
+    id: i + 1,
+    image: `/images/ezgif-frames/ezgif-frame-${frameNumber}.jpg`,
+    headline: '',
+    subtitle: '',
+    ctaText: '',
+  }
+})
+
+// The two additional images (separate from the 40 frames)
+const additionalImages = [
   {
-    id: 1,
-    image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1920&q=80',
-    headline: 'Welcome to Excellence',
-    subtitle: 'Discover innovative solutions that transform your business',
-    ctaText: 'Get Started',
+    id: 41,
+    image: '/images/Whisk_czn0kjyxadz5uwzh1czhdtotemy1qtlhndm40im.jpeg',
+    headline: '',
+    subtitle: '',
+    ctaText: '',
   },
   {
-    id: 2,
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1920&q=80',
-    headline: 'Innovation Meets Quality',
-    subtitle: 'Building the future with cutting-edge technology and expertise',
-    ctaText: 'Learn More',
-  },
-  {
-    id: 3,
-    image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80',
-    headline: 'Your Success is Our Mission',
-    subtitle: 'Partner with us to achieve extraordinary results',
-    ctaText: 'Contact Us',
+    id: 42,
+    image: '/images/Whisk_y2nxkdmzudm0cdom1ym5ctotqtyzqtl3gdmi1co.jpeg',
+    headline: '',
+    subtitle: '',
+    ctaText: '',
   },
 ]
 
@@ -29,7 +35,7 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <Header />
-      <HeroSlider slides={slides} autoPlayInterval={5000} />
+      <HeroSlider slides={frameSlides} additionalImages={additionalImages} />
     </main>
   )
 }

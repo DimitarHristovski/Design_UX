@@ -19,7 +19,7 @@ export default function Header() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-sm shadow-md'
+          ? 'bg-white/95 backdrop-blur-md shadow-lg'
           : 'bg-transparent'
       }`}
     >
@@ -27,7 +27,11 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link
             href="/"
-            className="text-2xl md:text-3xl font-bold text-gray-900 hover:text-gray-700 transition-colors"
+            className={`text-2xl md:text-3xl font-bold transition-colors ${
+              isScrolled
+                ? 'text-gray-900 hover:text-gray-700'
+                : 'text-white drop-shadow-lg hover:text-white/90'
+            }`}
             aria-label="Home"
           >
             DH
@@ -36,32 +40,52 @@ export default function Header() {
           <div className="hidden md:flex items-center space-x-8">
             <Link
               href="#home"
-              className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
+              className={`font-medium transition-colors ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white drop-shadow-md hover:text-white/90'
+              }`}
             >
               Home
             </Link>
             <Link
               href="#about"
-              className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
+              className={`font-medium transition-colors ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white drop-shadow-md hover:text-white/90'
+              }`}
             >
               About
             </Link>
             <Link
               href="#services"
-              className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
+              className={`font-medium transition-colors ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white drop-shadow-md hover:text-white/90'
+              }`}
             >
               Services
             </Link>
             <Link
               href="#contact"
-              className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
+              className={`font-medium transition-colors ${
+                isScrolled
+                  ? 'text-gray-900 hover:text-gray-700'
+                  : 'text-white drop-shadow-md hover:text-white/90'
+              }`}
             >
               Contact
             </Link>
           </div>
 
           <button
-            className="md:hidden text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 rounded-md p-2"
+            className={`md:hidden focus:outline-none focus:ring-2 rounded-md p-2 transition-colors ${
+              isScrolled
+                ? 'text-gray-900 focus:ring-gray-900'
+                : 'text-white focus:ring-white drop-shadow-md'
+            }`}
             aria-label="Toggle menu"
             aria-expanded="false"
           >
