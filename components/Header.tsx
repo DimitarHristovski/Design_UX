@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,6 +15,10 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen)
+  }
 
   return (
     <header
@@ -37,71 +42,101 @@ export default function Header() {
             DH
           </Link>
 
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="#home"
-              className={`font-medium transition-colors ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-gray-700'
-                  : 'text-white drop-shadow-md hover:text-white/90'
-              }`}
-            >
-              Home
-            </Link>
-            <Link
-              href="#about"
-              className={`font-medium transition-colors ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-gray-700'
-                  : 'text-white drop-shadow-md hover:text-white/90'
-              }`}
-            >
-              About
-            </Link>
-            <Link
-              href="#services"
-              className={`font-medium transition-colors ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-gray-700'
-                  : 'text-white drop-shadow-md hover:text-white/90'
-              }`}
-            >
-              Services
-            </Link>
-            <Link
-              href="#contact"
-              className={`font-medium transition-colors ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-gray-700'
-                  : 'text-white drop-shadow-md hover:text-white/90'
-              }`}
-            >
-              Contact
-            </Link>
-          </div>
-
           <button
-            className={`md:hidden focus:outline-none focus:ring-2 rounded-md p-2 transition-colors ${
+            onClick={toggleMenu}
+            className={`focus:outline-none focus:ring-2 rounded-md p-2 transition-colors ${
               isScrolled
                 ? 'text-gray-900 focus:ring-gray-900'
                 : 'text-white focus:ring-white drop-shadow-md'
             }`}
             aria-label="Toggle menu"
-            aria-expanded="false"
+            aria-expanded={isMenuOpen}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
+            {isMenuOpen ? (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            ) : (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            )}
           </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div
+            className={`md:hidden absolute top-full left-0 right-0 transition-all duration-300 ${
+              isScrolled
+                ? 'bg-white/95 backdrop-blur-md shadow-lg'
+                : 'bg-black/80 backdrop-blur-md'
+            }`}
+          >
+            <div className="container mx-auto px-4 py-4 space-y-3">
+              <Link
+                href="#home"
+                onClick={() => setIsMenuOpen(false)}
+                className={`block font-medium transition-colors py-2 ${
+                  isScrolled
+                    ? 'text-gray-900 hover:text-gray-700'
+                    : 'text-white hover:text-white/90'
+                }`}
+              >
+                Home
+              </Link>
+              <Link
+                href="#about"
+                onClick={() => setIsMenuOpen(false)}
+                className={`block font-medium transition-colors py-2 ${
+                  isScrolled
+                    ? 'text-gray-900 hover:text-gray-700'
+                    : 'text-white hover:text-white/90'
+                }`}
+              >
+                About
+              </Link>
+              <Link
+                href="#services"
+                onClick={() => setIsMenuOpen(false)}
+                className={`block font-medium transition-colors py-2 ${
+                  isScrolled
+                    ? 'text-gray-900 hover:text-gray-700'
+                    : 'text-white hover:text-white/90'
+                }`}
+              >
+                Services
+              </Link>
+              <Link
+                href="#contact"
+                onClick={() => setIsMenuOpen(false)}
+                className={`block font-medium transition-colors py-2 ${
+                  isScrolled
+                    ? 'text-gray-900 hover:text-gray-700'
+                    : 'text-white hover:text-white/90'
+                }`}
+              >
+                Contact
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
     </header>
   )
