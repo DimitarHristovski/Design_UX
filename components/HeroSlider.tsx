@@ -175,8 +175,8 @@ export default function HeroSlider({
     ? additionalImages[additionalIndex] 
     : slides[currentFrame]
 
-  // Full lyrics text
-  const lyricsText = 'He was a skater boy\nShe said, "See you later, boy"\nHe wasn\'t good enough for her\nShe had a pretty face\nBut her head was up in space\nShe needed to come back down to earth'
+  // Minimalistic catchy phrase
+  const catchyPhrase = 'Avril Lavigne'
 
   return (
     <section className="relative w-full h-screen overflow-hidden" aria-label="Hero slider">
@@ -200,29 +200,93 @@ export default function HeroSlider({
         onContextMenu={(e) => e.preventDefault()}
       />
 
-      {/* Text Overlay - Right Side */}
-      <div className="absolute right-0 top-0 bottom-0 flex items-center justify-end pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-24 z-20 px-4 sm:px-0">
-        <div className="text-right max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl">
-          <h1
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-3 sm:mb-4 md:mb-6 text-white drop-shadow-2xl"
-            style={{
-              textShadow: '2px 2px 6px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.5)',
+      {/* Blur overlay for bottom right corner to hide watermark */}
+      <div 
+        className="absolute bottom-0 right-0 w-24 sm:w-24 md:w-24 h-24 sm:h-16 md:h-16 z-15"
+        style={{
+          background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, transparent 70%)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        }}
+      />
 
-              letterSpacing: '1.5px',
-              lineHeight: '1.1',
-            }}
-          >
-            Sk8er Boi
-          </h1>
-          <p
-            className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-white drop-shadow-lg leading-relaxed whitespace-pre-line"
+      {/* Text Overlay - Right Side */}
+      <div className="absolute right-0 top-16 sm:top-20 md:top-24 flex flex-col items-end pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-24 z-20 px-4 sm:px-0">
+        <div className="flex flex-col items-end gap-3 sm:gap-4">
+          <div
+            className="relative"
             style={{
-              textShadow: '2px 2px 6px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.5)',
-              letterSpacing: '0.5px',
+              transform: 'rotate(-1deg)',
             }}
           >
-            {lyricsText}
-          </p>
+            <div
+              className="px-3 sm:px-4 md:px-5 py-2 sm:py-3 md:py-4"
+              style={{
+                border: '2px solid white',
+                borderRadius: '6px',
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.4)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+                backdropFilter: 'blur(8px)',
+                position: 'relative',
+              }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.1) 8px, rgba(255,255,255,0.1) 16px)',
+                  borderRadius: '4px',
+                }}
+              />
+              <h1
+                className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white relative z-10"
+                style={{
+                  letterSpacing: '2px',
+                  lineHeight: '1.1',
+                  textTransform: 'uppercase',
+                  fontFamily: 'monospace',
+                }}
+              >
+                Sk8er Boi
+              </h1>
+            </div>
+          </div>
+          <div
+            className="relative"
+            style={{
+              transform: 'rotate(0.5deg)',
+            }}
+          >
+            <div
+              className="px-2 sm:px-3 md:px-4 py-1 sm:py-2 md:py-3"
+              style={{
+                border: '2px solid white',
+                borderRadius: '5px',
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.4)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+                backdropFilter: 'blur(8px)',
+                position: 'relative',
+              }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: 'repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(255,255,255,0.08) 6px, rgba(255,255,255,0.08) 12px)',
+                  borderRadius: '3px',
+                }}
+              />
+              <p
+                className="text-xs sm:text-sm md:text-base lg:text-lg text-white leading-tight relative z-10"
+                style={{
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  fontWeight: '600',
+                  fontFamily: 'monospace',
+                }}
+              >
+                {catchyPhrase}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
