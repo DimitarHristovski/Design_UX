@@ -20,44 +20,80 @@ export default function HeroSlider({
   additionalImages = [],
 }: HeroSliderProps) {
   const [currentFrame, setCurrentFrame] = useState(0)
+  const [nextFrame, setNextFrame] = useState(() => {
+    // Initialize to next frame if available, otherwise same as current
+    return slides.length > 1 ? 1 : 0
+  })
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [isShowingAdditional, setIsShowingAdditional] = useState(false)
   const [additionalIndex, setAdditionalIndex] = useState(0)
   const directionRef = useRef<1 | -1>(1) // 1 for forward, -1 for backward
   const frameRef = useRef(0)
+  const previousFrameRef = useRef(0) // Track previous frame to prevent duplicates
   const imagesLoadedRef = useRef(false)
+  const animationFrameRef = useRef<number | null>(null)
+  const lastFrameTimeRef = useRef<number>(0)
+  const isTransitioningRef = useRef(false) // Prevent overlapping transitions
   
-  // Animation configuration - memoized to prevent re-renders
+  // Animation configuration - optimized for smooth performance
+  // Loop through all frames 0-39 (001-040)
   const totalFrames = slides.length
-  const framesPerImage = 5
-  const forwardFrameDuration = 100
-  const reverseFrameDuration = useMemo(() => 6000 / totalFrames, [totalFrames])
+  const maxFrameIndex = totalFrames > 0 ? totalFrames - 1 : 0 // Use all available frames (0-39 for 40 frames)
+  const framesPerImage = 3 // Reduced for more responsive updates
+  const forwardFrameDuration = 80 // Faster frame rate for smoother animation
+  const reverseFrameDuration = useMemo(() => 80, []) // Same speed for both directions
   const forwardBaseDuration = useMemo(() => forwardFrameDuration / framesPerImage, [])
   const reverseBaseDuration = useMemo(() => reverseFrameDuration / framesPerImage, [reverseFrameDuration])
   
   
-  // Preload all images with higher priority (frames + additional images)
+  // Image Preloading Flow
+  // =====================
+  // 1. Combines all slides and additional images
+  // 2. Creates Image objects for each
+  // 3. Sets high priority for first 5 frames (critical path)
+  // 4. Uses decode() API for smoother rendering
+  // 5. Marks images as loaded when all are ready
+  
   useEffect(() => {
     const allImages = [...slides, ...additionalImages]
-    const imagePromises = allImages.map((slide) => {
-      return new Promise((resolve, reject) => {
-        const img = new window.Image()
-        img.onload = resolve
-        img.onerror = reject
-        img.src = slide.image
-        // Force image decoding for smoother transitions
-        if ('decode' in img) {
-          img.decode().then(resolve).catch(reject)
-        }
-      })
-    })
     
-    Promise.all(imagePromises)
+    const preloadImage = (slide: Slide, index: number): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const img = new window.Image() as HTMLImageElement
+        
+        // Prioritize first few frames for faster initial load
+        if (index < 5 && 'fetchPriority' in img) {
+          (img as any).fetchPriority = 'high'
+        }
+        
+        // Handle image load/error
+        img.onload = () => {
+          // Use decode API for smoother transitions (if available)
+          if ('decode' in img && typeof img.decode === 'function') {
+            img.decode().then(() => resolve()).catch(() => resolve())
+          } else {
+            // Fallback: resolve if image is already complete
+            resolve()
+          }
+        }
+        img.onerror = reject
+        
+        // Start loading
+        img.src = slide.image
+      })
+    }
+    
+    // Preload all images in parallel
+    Promise.all(allImages.map(preloadImage))
       .then(() => {
         imagesLoadedRef.current = true
-        // Ensure first frame is visible immediately
-        setCurrentFrame(0)
+        setCurrentFrame(0) // Show first frame immediately
       })
-      .catch((err) => console.error('Error preloading images:', err))
+      .catch((err) => {
+        console.error('Error preloading images:', err)
+        // Still mark as loaded to prevent infinite waiting
+        imagesLoadedRef.current = true
+      })
   }, [slides, additionalImages])
 
   const goToNext = () => {
@@ -114,101 +150,235 @@ export default function HeroSlider({
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [isShowingAdditional, additionalIndex, additionalImages.length])
 
-  // Frame animation loop with reverse and variable speed (only when not showing additional images)
+  // Slider Animation Flow
+  // =====================
+  // 1. Preloads all images
+  // 2. Starts animation loop when images are loaded
+  // 3. Loops continuously: 0→39 (001→040 ascending) then 39→0 (040→001 descending)
+  // 4. Uses requestAnimationFrame for smooth 60fps timing
+  // 5. Handles frame transitions with crossfade effect
+  
   useEffect(() => {
     // Pause animation when showing additional images
-    if (isShowingAdditional) return
+    if (isShowingAdditional) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      return
+    }
     
-    let localCounter = 0
-    let timeoutId: NodeJS.Timeout | null = null
-    let startTimeoutId: NodeJS.Timeout | null = null
+    let frameCounter = 0
+    let startCheckTimeout: NodeJS.Timeout | null = null
+    let transitionTimeout: NodeJS.Timeout | null = null
     
-    // Wait for images to load before starting
-    const checkAndStart = () => {
+    // Wait for all images to preload before starting animation
+    const waitForImagesAndStart = () => {
       if (!imagesLoadedRef.current) {
-        startTimeoutId = setTimeout(checkAndStart, 50)
+        startCheckTimeout = setTimeout(waitForImagesAndStart, 50)
         return
       }
       
-      const animate = () => {
-        localCounter += 1
+      // Initialize animation timing
+      lastFrameTimeRef.current = performance.now()
+      previousFrameRef.current = frameRef.current // Initialize previous frame
+      
+      // Main animation loop using requestAnimationFrame
+      const animationLoop = (currentTime: number) => {
+        const elapsed = currentTime - lastFrameTimeRef.current
+        const frameDuration = directionRef.current === -1 ? reverseBaseDuration : forwardBaseDuration
         
-        if (localCounter >= framesPerImage) {
-          const nextFrame = frameRef.current + directionRef.current
+        // Check if enough time has passed for next frame update
+        if (elapsed >= frameDuration) {
+          frameCounter += 1
+          // Preserve timing remainder for smooth frame pacing
+          lastFrameTimeRef.current = currentTime - (elapsed % frameDuration)
           
-          // Reverse direction at boundaries
-          if (nextFrame >= totalFrames - 1) {
-            directionRef.current = -1
-            frameRef.current = totalFrames - 1
-          } else if (nextFrame <= 0) {
-            directionRef.current = 1
-            frameRef.current = 0
-          } else {
-            frameRef.current = nextFrame
+          // Update frame after accumulating enough counter ticks
+          // Only proceed if not already transitioning to prevent frame doubling
+          if (frameCounter >= framesPerImage && !isTransitioningRef.current) {
+            // Calculate next frame index based on current direction
+            const nextIndex = frameRef.current + directionRef.current
+            
+            // Handle boundary conditions - loop frames 0-39 (001-040) smoothly
+            if (nextIndex > maxFrameIndex) {
+              // Reached end (frame 39/040): stay at last frame, reverse to descending
+              frameRef.current = maxFrameIndex
+              directionRef.current = -1
+            } else if (nextIndex < 0) {
+              // Reached start (frame 0/001): stay at first frame, reverse to ascending
+              frameRef.current = 0
+              directionRef.current = 1
+            } else {
+              // Normal progression: move to next frame in current direction (0→39 or 39→0)
+              frameRef.current = nextIndex
+            }
+            
+            // Only transition if frame actually changed (use ref to avoid stale closure)
+            const targetFrame = frameRef.current
+            if (targetFrame !== previousFrameRef.current) {
+              // Mark transition as in progress
+              isTransitioningRef.current = true
+              
+              // Update next frame state for crossfade transition
+              setNextFrame(targetFrame)
+              setIsTransitioning(true)
+              
+              // Complete transition after crossfade duration
+              transitionTimeout = setTimeout(() => {
+                setCurrentFrame(targetFrame)
+                previousFrameRef.current = targetFrame // Update previous frame
+                setIsTransitioning(false)
+                isTransitioningRef.current = false // Allow next transition
+              }, 200) // Match CSS transition duration
+            }
+            
+            // Reset counter for next frame cycle
+            frameCounter = 0
           }
-          
-          setCurrentFrame(frameRef.current)
-          localCounter = 0
         }
         
-        // Use constant frame duration based on direction
-        const isReversing = directionRef.current === -1
-        const frameDuration = isReversing ? reverseBaseDuration : forwardBaseDuration
-        
-        timeoutId = setTimeout(animate, frameDuration)
+        // Continue animation loop
+        animationFrameRef.current = requestAnimationFrame(animationLoop)
       }
-
-      // Start the animation (use forward duration initially)
-      timeoutId = setTimeout(animate, forwardBaseDuration)
+      
+      // Start the animation loop
+      animationFrameRef.current = requestAnimationFrame(animationLoop)
     }
     
-    checkAndStart()
+    // Begin waiting for images and starting animation
+    waitForImagesAndStart()
 
+    // Cleanup function
     return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-      if (startTimeoutId) clearTimeout(startTimeoutId)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      if (startCheckTimeout) {
+        clearTimeout(startCheckTimeout)
+      }
+      if (transitionTimeout) {
+        clearTimeout(transitionTimeout)
+      }
     }
-  }, [totalFrames, forwardBaseDuration, reverseBaseDuration, framesPerImage, isShowingAdditional])
+  }, [totalFrames, maxFrameIndex, forwardBaseDuration, reverseBaseDuration, framesPerImage, isShowingAdditional])
 
-  // Determine which image to show
+  // Image Selection Logic
+  // ======================
+  // Determines which images to display based on current state
+  // - Current image: what's currently visible
+  // - Next image: what's being crossfaded in (only for frame animation)
+  
   const currentImage = isShowingAdditional 
     ? additionalImages[additionalIndex] 
     : slides[currentFrame]
+  
+  const nextImage = useMemo(() => {
+    // No next image when showing additional images
+    if (isShowingAdditional) return null
+    
+    // Validate and return next frame (respecting 0-39 range for frames 001-040)
+    if (nextFrame >= 0 && nextFrame <= maxFrameIndex && nextFrame < slides.length) {
+      return slides[nextFrame]
+    }
+    
+    // Fallback to current frame if next is invalid
+    return slides[currentFrame]
+  }, [isShowingAdditional, nextFrame, currentFrame, slides, maxFrameIndex])
 
   // Minimalistic catchy phrase
   const catchyPhrase = 'Avril Lavigne'
 
   return (
-    <section className="relative w-full h-screen overflow-hidden" aria-label="Hero slider">
-      <img
-        key={isShowingAdditional ? `additional-${additionalIndex}` : `frame-${currentFrame}`}
-        src={currentImage?.image}
-        alt={isShowingAdditional ? `Additional Image ${additionalIndex + 1}` : `Frame ${currentFrame + 1}`}
-        className="absolute inset-0 w-full h-full object-cover select-none"
-        draggable={false}
-        loading="eager"
-        style={{
-          opacity: 1,
-          transition: 'opacity 0.1s ease-in-out',
-          transform: 'scale(1)',
-          willChange: 'opacity',
-        }}
-        onDoubleClick={() => {
-          // Double click to return to frame animation
-          setIsShowingAdditional(false)
-        }}
-        onContextMenu={(e) => e.preventDefault()}
-      />
-
-      {/* Blur overlay for bottom right corner to hide watermark */}
+    <section 
+      className="relative w-full h-screen overflow-hidden" 
+      aria-label="Hero slider"
+      style={{
+        backgroundColor: '#000', // Prevent black screen flash
+        isolation: 'isolate', // Create new stacking context
+      }}
+    >
+      {/* Image Container - Crossfade Transition System */}
+      {/* 
+        Crossfade Mechanism:
+        1. Current image fades out (opacity 1 → 0) when transitioning
+        2. Next image fades in (opacity 0 → 1) simultaneously
+        3. Both images are always in DOM to prevent black screen
+        4. Z-index swaps to ensure smooth layering
+      */}
       <div 
-        className="absolute bottom-0 right-0 w-24 sm:w-24 md:w-24 h-24 sm:h-16 md:h-16 z-15"
-        style={{
-          background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, transparent 70%)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+        className="absolute inset-0 w-full h-full" 
+        style={{ 
+          backgroundColor: '#000',
+          contain: 'layout style paint',
+          transform: 'translateZ(0)', // Force hardware acceleration
+          backfaceVisibility: 'hidden', // Improve rendering performance
         }}
-      />
+      >
+        {/* Current Image Layer */}
+        {/* Fades out during transition, visible otherwise */}
+        <img
+          key={isShowingAdditional ? `additional-${additionalIndex}` : `current-${currentFrame}`}
+          src={currentImage?.image}
+          alt={isShowingAdditional ? `Additional Image ${additionalIndex + 1}` : `Frame ${currentFrame + 1}`}
+          className="absolute inset-0 w-full h-full object-cover select-none"
+          draggable={false}
+          loading="eager"
+          decoding="async"
+          style={{
+            opacity: isTransitioning && !isShowingAdditional ? 0 : 1,
+            transition: isTransitioning && !isShowingAdditional ? 'opacity 0.2s ease-in-out' : 'none',
+            willChange: 'opacity',
+            zIndex: isTransitioning && !isShowingAdditional ? 1 : 2,
+            imageRendering: 'auto',
+            transform: 'translateZ(0)', // Hardware acceleration
+            backfaceVisibility: 'hidden', // Improve performance
+          }}
+          onDoubleClick={() => {
+            setIsShowingAdditional(false)
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+        />
+        
+        {/* Next Image Layer - Crossfade Target */}
+        {/* Only render during active transition to prevent frame doubling */}
+        {!isShowingAdditional && nextImage && isTransitioning && nextFrame !== currentFrame && (
+          <img
+            key={`next-${nextFrame}`}
+            src={nextImage.image}
+            alt={`Frame ${nextFrame + 1}`}
+            className="absolute inset-0 w-full h-full object-cover select-none"
+            draggable={false}
+            loading="eager"
+            decoding="async"
+            style={{
+              opacity: 1,
+              transition: 'opacity 0.2s ease-in-out',
+              willChange: 'opacity',
+              zIndex: 2,
+              imageRendering: 'auto',
+              transform: 'translateZ(0)', // Hardware acceleration
+              backfaceVisibility: 'hidden', // Improve performance
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+          />
+        )}
+      </div>
+
+      {/* Blur overlay for bottom right corner to hide watermark - only for animation frames */}
+      {!isShowingAdditional && (
+        <div 
+          className="absolute bottom-0 right-0 w-24 sm:w-24 md:w-24 h-24 sm:h-16 md:h-16"
+          style={{
+            background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, transparent 70%)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 25, // Higher z-index to ensure it's always visible above all images
+            pointerEvents: 'none', // Allow clicks to pass through
+          }}
+        />
+      )}
 
       {/* Text Overlay - Right Side */}
       <div className="absolute right-0 top-16 sm:top-20 md:top-24 flex flex-col items-end pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-24 z-20 px-4 sm:px-0">
